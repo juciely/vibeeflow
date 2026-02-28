@@ -13,7 +13,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/30 backdrop-blur-xl backdrop-saturate-150 border-b border-white/[0.08] shadow-[0_1px_12px_rgba(0,0,0,0.25)]">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <button onClick={() => navigate("/")} className="flex items-center gap-2">
