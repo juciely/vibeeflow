@@ -72,14 +72,14 @@ function NanoBees({ width, height }: { width: number; height: number }) {
 
     // spawn 3-4 bees staggered
     const spawnWave = () => {
-      const count = 3 + Math.floor(Math.random() * 2);
+      const count = 8 + Math.floor(Math.random() * 5);
       for (let i = 0; i < count; i++) {
-        setTimeout(() => { beesRef.current.push(spawnBee()); }, i * 400);
+        setTimeout(() => { beesRef.current.push(spawnBee()); }, i * 200);
       }
     };
 
     spawnWave();
-    const interval = setInterval(spawnWave, 5000);
+    const interval = setInterval(spawnWave, 3000);
 
     let raf: number;
     const loop = () => {
