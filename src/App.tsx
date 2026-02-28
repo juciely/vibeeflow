@@ -10,6 +10,10 @@ import PRD from "./pages/PRD";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AdminPanel from "./pages/AdminPanel";
+import Dashboard from "./pages/Dashboard";
+import ProjectDetail from "./pages/ProjectDetail";
+import TestResult from "./pages/TestResult";
+import PricingPage from "./pages/PricingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +32,10 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/projects/:id" element={<ProjectDetail />} />
+              <Route path="/projects/:id/test-runs/:runId" element={<TestResult />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
