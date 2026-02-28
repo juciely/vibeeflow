@@ -1,6 +1,7 @@
 import { useI18n } from "@/contexts/I18nContext";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Play } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 const HexagonPattern = () => (
   <svg
@@ -28,6 +29,172 @@ const HexagonPattern = () => (
   </svg>
 );
 
+/* ── Nano-bees with dashed trails ── */
+interface Bee {
+  x: number; y: number;
+  vx: number; vy: number;
+  trail: { x: number; y: number }[];
+  opacity: number;
+  phase: "in" | "fly" | "out";
+  life: number;
+  maxLife: number;
+}
+
+function NanoBees({ width, height }: { width: number; height: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const beesRef = useRef<Bee[]>([]);
+  const frameRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const spawnBee = (): Bee => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.4 + Math.random() * 0.6;
+      return {
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        trail: [],
+        opacity: 0,
+        phase: "in",
+        life: 0,
+        maxLife: 180 + Math.random() * 220, // 3-7s at 60fps
+      };
+    };
+
+    // spawn 3-4 bees staggered
+    const spawnWave = () => {
+      const count = 3 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => { beesRef.current.push(spawnBee()); }, i * 400);
+      }
+    };
+
+    spawnWave();
+    const interval = setInterval(spawnWave, 5000);
+
+    let raf: number;
+    const loop = () => {
+      ctx.clearRect(0, 0, width, height);
+      const bees = beesRef.current;
+
+      for (let i = bees.length - 1; i >= 0; i--) {
+        const b = bees[i];
+        b.life++;
+
+        // phase transitions
+        if (b.phase === "in") {
+          b.opacity = Math.min(1, b.opacity + 0.03);
+          if (b.opacity >= 1) b.phase = "fly";
+        } else if (b.phase === "fly" && b.life > b.maxLife) {
+          b.phase = "out";
+        } else if (b.phase === "out") {
+          b.opacity = Math.max(0, b.opacity - 0.02);
+          if (b.opacity <= 0) { bees.splice(i, 1); continue; }
+        }
+
+        // gentle random walk
+        b.vx += (Math.random() - 0.5) * 0.12;
+        b.vy += (Math.random() - 0.5) * 0.12;
+        const mag = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        if (mag > 1.2) { b.vx *= 0.95; b.vy *= 0.95; }
+
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // trail
+        b.trail.push({ x: b.x, y: b.y });
+        if (b.trail.length > 60) b.trail.shift();
+
+        // draw dashed trail
+        if (b.trail.length > 2) {
+          ctx.save();
+          ctx.setLineDash([3, 5]);
+          ctx.strokeStyle = `hsla(45, 95%, 55%, ${b.opacity * 0.12})`;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(b.trail[0].x, b.trail[0].y);
+          for (let j = 1; j < b.trail.length; j++) {
+            ctx.lineTo(b.trail[j].x, b.trail[j].y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // draw nano bee (tiny 3px diamond shape)
+        ctx.save();
+        ctx.globalAlpha = b.opacity * 0.25;
+        ctx.fillStyle = "hsl(45, 95%, 65%)";
+        ctx.translate(b.x, b.y);
+        // tiny wing flap via rotation
+        const wingAngle = Math.sin(b.life * 0.5) * 0.3;
+        ctx.rotate(Math.atan2(b.vy, b.vx) + wingAngle);
+        // body
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 2.5, 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // wings
+        ctx.globalAlpha = b.opacity * 0.15;
+        ctx.beginPath();
+        ctx.ellipse(-0.5, -1.8, 1.5, 0.8, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(-0.5, 1.8, 1.5, 0.8, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearInterval(interval);
+    };
+  }, [width, height]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+      style={{ width, height }}
+    />
+  );
+}
+
+function NanoBeesLayer() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current) {
+        setSize({ w: containerRef.current.offsetWidth, h: containerRef.current.offsetHeight });
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none overflow-hidden">
+      {size.w > 0 && <NanoBees width={size.w} height={size.h} />}
+    </div>
+  );
+}
+
+import { useState } from "react";
+
 const HeroSection = () => {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -36,6 +203,9 @@ const HeroSection = () => {
     <section className="relative pt-36 pb-24 px-6 overflow-hidden min-h-[90vh] flex items-center">
       {/* Honeycomb texture */}
       <HexagonPattern />
+
+      {/* Nano bees animation */}
+      <NanoBeesLayer />
 
       {/* Radial glow effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -86,7 +256,7 @@ const HeroSection = () => {
           Now in beta — join 200+ founders testing smarter
         </div>
 
-        {/* Main heading with Plus Jakarta Sans */}
+        {/* Main heading */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-foreground leading-[1.1] mb-8 max-w-4xl mx-auto tracking-tight">
           {t("hero", "title").split("tested").length > 1 ? (
             <>
