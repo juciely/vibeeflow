@@ -1,0 +1,21 @@
+{
+  "tables": [
+    "profiles",
+    "projects",
+    "briefings",
+    "test_runs",
+    "test_results",
+    "site_content",
+    "user_roles"
+  ],
+  "exportOrder": [
+    "profiles",
+    "projects",
+    "briefings",
+    "test_runs",
+    "test_results",
+    "site_content",
+    "user_roles"
+  ],
+  "storage_buckets": []
+}
