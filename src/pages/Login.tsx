@@ -18,7 +18,7 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      navigate("/admin");
+      navigate("/dashboard");
     }
     setLoading(false);
   };
