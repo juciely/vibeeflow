@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      briefings: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "briefings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -35,6 +67,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          id: string
+          last_test_at: string | null
+          name: string
+          repo_url: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_test_at?: string | null
+          name: string
+          repo_url?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_test_at?: string | null
+          name?: string
+          repo_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -76,6 +141,91 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      test_results: {
+        Row: {
+          ai_insight: string | null
+          corrective_prompt: string | null
+          created_at: string
+          duration_ms: number | null
+          flow_name: string
+          id: string
+          screenshot_url: string | null
+          status: string
+          test_run_id: string
+        }
+        Insert: {
+          ai_insight?: string | null
+          corrective_prompt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          flow_name: string
+          id?: string
+          screenshot_url?: string | null
+          status?: string
+          test_run_id: string
+        }
+        Update: {
+          ai_insight?: string | null
+          corrective_prompt?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          flow_name?: string
+          id?: string
+          screenshot_url?: string | null
+          status?: string
+          test_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_results_test_run_id_fkey"
+            columns: ["test_run_id"]
+            isOneToOne: false
+            referencedRelation: "test_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          failed_flows: number
+          id: string
+          passed_flows: number
+          project_id: string
+          status: string
+          total_flows: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          failed_flows?: number
+          id?: string
+          passed_flows?: number
+          project_id: string
+          status?: string
+          total_flows?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          failed_flows?: number
+          id?: string
+          passed_flows?: number
+          project_id?: string
+          status?: string
+          total_flows?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
