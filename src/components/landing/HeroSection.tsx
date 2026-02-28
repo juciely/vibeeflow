@@ -3,31 +3,58 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Play } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-const HexagonPattern = () => (
-  <svg
-    className="absolute inset-0 w-full h-full opacity-[0.07]"
-    xmlns="http://www.w3.org/2000/svg"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <defs>
-      <pattern
-        id="honeycomb"
-        width="56"
-        height="100"
-        patternUnits="userSpaceOnUse"
-        patternTransform="scale(1.2)"
-      >
-        <path
-          d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66ZM28 100L0 84L0 50L28 34L56 50L56 84L28 100Z"
-          fill="none"
-          stroke="hsl(45, 95%, 55%)"
-          strokeWidth="0.8"
-        />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#honeycomb)" />
-  </svg>
-);
+const HexagonPattern = () => {
+  // Proper flat-top honeycomb: hex width=40, hex height=~34.64
+  const w = 40;
+  const h = w * Math.sqrt(3) / 2; // ~34.64
+  const patW = w * 1.5; // 60 - horizontal repeat
+  const patH = h * 2;   // ~69.28 - vertical repeat
+
+  // Two hexagons per tile for proper honeycomb offset
+  const hex = (cx: number, cy: number) => {
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      pts.push(`${cx + (w / 2) * Math.cos(angle)},${cy + (w / 2) * Math.sin(angle)}`);
+    }
+    return pts.join(" ");
+  };
+
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full opacity-[0.06]"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <pattern
+          id="honeycomb"
+          width={patW}
+          height={patH}
+          patternUnits="userSpaceOnUse"
+        >
+          {/* Row 1 hex */}
+          <polygon
+            points={hex(w / 2, h)}
+            fill="hsl(45, 95%, 55%)"
+            fillOpacity="0.04"
+            stroke="hsl(45, 95%, 55%)"
+            strokeWidth="0.6"
+          />
+          {/* Row 2 hex (offset) */}
+          <polygon
+            points={hex(w * 1.25, h * 2)}
+            fill="hsl(45, 95%, 55%)"
+            fillOpacity="0.02"
+            stroke="hsl(45, 95%, 55%)"
+            strokeWidth="0.6"
+          />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#honeycomb)" />
+    </svg>
+  );
+};
 
 /* ── Nano-bees with dashed trails ── */
 interface Bee {
