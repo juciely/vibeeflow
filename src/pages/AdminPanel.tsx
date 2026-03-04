@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Zap, LogOut, FileText, Globe, Settings, Save, Plus, Trash2, Loader2, Menu, X,
+  Zap, LogOut, FileText, Globe, Settings, Save, Plus, Trash2, Loader2, Menu, X, Store,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/landing/LanguageSwitcher";
+import AdminMarketplace from "@/components/admin/AdminMarketplace";
 
 interface ContentItem {
   id?: string;
@@ -30,6 +31,7 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
+  const [activeView, setActiveView] = useState<"content" | "marketplace">("content");
   const [activeLang, setActiveLang] = useState<string>("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
@@ -134,9 +136,9 @@ const AdminPanel = () => {
           {SECTIONS.map((sec) => (
             <button
               key={sec}
-              onClick={() => { setActiveSection(sec); setSidebarOpen(false); }}
+              onClick={() => { setActiveView("content"); setActiveSection(sec); setSidebarOpen(false); }}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all capitalize ${
-                activeSection === sec
+                activeView === "content" && activeSection === sec
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-sidebar-foreground hover:bg-sidebar-accent"
               }`}
@@ -144,6 +146,18 @@ const AdminPanel = () => {
               {sec.replace("_", " ")}
             </button>
           ))}
+
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2 mt-4">Integrations</p>
+          <button
+            onClick={() => { setActiveView("marketplace"); setSidebarOpen(false); }}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${
+              activeView === "marketplace"
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-sidebar-foreground hover:bg-sidebar-accent"
+            }`}
+          >
+            <Store className="w-4 h-4" /> Marketplace
+          </button>
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border space-y-2">
@@ -175,7 +189,9 @@ const AdminPanel = () => {
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden">
               <Menu className="w-5 h-5 text-foreground" />
             </button>
-            <h1 className="text-sm font-bold text-foreground capitalize">{activeSection.replace("_", " ")} Content</h1>
+            <h1 className="text-sm font-bold text-foreground capitalize">
+              {activeView === "marketplace" ? "Marketplace" : `${activeSection.replace("_", " ")} Content`}
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
