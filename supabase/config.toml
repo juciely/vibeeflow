@@ -1,1 +1,7 @@
 project_id = "satdfqcmugmcbatodawu"
+
+[functions.marketplace-register]
+verify_jwt = false
+
+[functions.marketplace-heartbeat]
+verify_jwt = false

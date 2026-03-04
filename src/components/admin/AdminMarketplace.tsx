@@ -103,7 +103,7 @@ const AdminMarketplace = () => {
 
         <div className="flex items-center gap-2 mb-6">
           {isConnected ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               Connected
             </span>
