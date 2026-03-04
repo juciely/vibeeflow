@@ -227,7 +227,9 @@ const AdminPanel = () => {
         </header>
 
         <div className="p-6 max-w-4xl">
-          {loading ? (
+          {activeView === "marketplace" ? (
+            <AdminMarketplace />
+          ) : loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
