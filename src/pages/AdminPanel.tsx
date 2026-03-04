@@ -193,35 +193,37 @@ const AdminPanel = () => {
               {activeView === "marketplace" ? "Marketplace" : `${activeSection.replace("_", " ")} Content`}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-              {["en", "pt", "es"].map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setActiveLang(l)}
-                  className={`px-2 py-1 rounded-md text-xs font-semibold transition-all uppercase ${
-                    activeLang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
+          {activeView === "content" && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+                {["en", "pt", "es"].map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setActiveLang(l)}
+                    className={`px-2 py-1 rounded-md text-xs font-semibold transition-all uppercase ${
+                      activeLang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditItem({
+                  section: activeSection,
+                  content_key: "",
+                  lang: activeLang,
+                  value: "",
+                  sort_order: filteredContent.length,
+                  is_active: true,
+                  metadata: {},
+                })}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold"
+              >
+                <Plus className="w-3 h-3" /> Add
+              </button>
             </div>
-            <button
-              onClick={() => setEditItem({
-                section: activeSection,
-                content_key: "",
-                lang: activeLang,
-                value: "",
-                sort_order: filteredContent.length,
-                is_active: true,
-                metadata: {},
-              })}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold"
-            >
-              <Plus className="w-3 h-3" /> Add
-            </button>
-          </div>
+          )}
         </header>
 
         <div className="p-6 max-w-4xl">
