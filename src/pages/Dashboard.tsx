@@ -27,6 +27,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [queueingProject, setQueueingProject] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -48,7 +49,56 @@ const Dashboard = () => {
     fetchProjects();
   }, [user]);
 
+  // Realtime for project status updates
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("projects-status")
+      .on(
+        "postgres_changes" as any,
+        { event: "UPDATE", schema: "public", table: "projects" },
+        (payload: any) => {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+          );
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   if (authLoading || !user) return null;
+
+  const handleRunTest = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    setQueueingProject(projectId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const projId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+      const res = await fetch(
+        `https://${projId}.supabase.co/functions/v1/queue-test`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ project_id: projectId }),
+        }
+      );
+      const result = await res.json();
+      if (res.ok) {
+        toast.success(`Test queued! ${result.flows_count} flows.`);
+      } else {
+        toast.error(result.error || "Failed to queue test");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error queuing test");
+    }
+    setQueueingProject(null);
+  };
 
   const timeAgo = (dateStr: string | null) => {
     if (!dateStr) return "Never";
@@ -79,7 +129,6 @@ const Dashboard = () => {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : projects.length === 0 ? (
-          /* Empty State */
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
               <FolderGit2 className="w-10 h-10 text-primary" />
@@ -99,10 +148,10 @@ const Dashboard = () => {
             </button>
           </div>
         ) : (
-          /* Project Cards Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project) => {
               const status = statusConfig[project.status] || statusConfig.pending;
+              const isQueueing = queueingProject === project.id;
               return (
                 <button
                   key={project.id}
@@ -124,14 +173,16 @@ const Dashboard = () => {
                     {timeAgo(project.last_test_at)}
                   </p>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toast.info("Test queued! (coming soon)");
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80 transition-colors"
+                    onClick={(e) => handleRunTest(e, project.id)}
+                    disabled={isQueueing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"
                   >
-                    <Play className="w-3 h-3" />
-                    Run Test
+                    {isQueueing ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Play className="w-3 h-3" />
+                    )}
+                    {isQueueing ? "Queuing..." : "Run Test"}
                   </button>
                 </button>
               );

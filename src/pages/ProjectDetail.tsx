@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import AppNavbar from "@/components/app/AppNavbar";
+import FlowEditor from "@/components/project/FlowEditor";
 import { FolderGit2, Play, Loader2, ExternalLink, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,8 +29,9 @@ const ProjectDetail = () => {
   const [project, setProject] = useState<any>(null);
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [activeTab, setActiveTab] = useState<"runs" | "briefing">("runs");
+  const [activeTab, setActiveTab] = useState<"runs" | "flows" | "briefing">("runs");
   const [loading, setLoading] = useState(true);
+  const [queueing, setQueueing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
@@ -50,6 +52,59 @@ const ProjectDetail = () => {
     };
     load();
   }, [user, id]);
+
+  // Realtime subscription for test_runs
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`test-runs-${id}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "test_runs", filter: `project_id=eq.${id}` },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            setTestRuns((prev) => [payload.new as TestRun, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setTestRuns((prev) =>
+              prev.map((r) => (r.id === (payload.new as TestRun).id ? (payload.new as TestRun) : r))
+            );
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
+
+  const handleRunTest = async () => {
+    if (!id) return;
+    setQueueing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/queue-test`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ project_id: id }),
+        }
+      );
+      const result = await res.json();
+      if (res.ok) {
+        toast.success(`Test queued! ${result.flows_count} flows will be tested.`);
+      } else {
+        toast.error(result.error || "Failed to queue test");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error queuing test");
+    }
+    setQueueing(false);
+  };
 
   if (authLoading || !user || loading) {
     return (
@@ -99,17 +154,18 @@ const ProjectDetail = () => {
         <div className="flex items-center justify-between mb-8 ml-10">
           <div />
           <button
-            onClick={() => toast.info("Test queued! (coming soon)")}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+            onClick={handleRunTest}
+            disabled={queueing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            <Play className="w-4 h-4" />
-            Run New Test
+            {queueing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            {queueing ? "Queuing..." : "Run New Test"}
           </button>
         </div>
 
         {/* Tabs */}
         <div className="flex items-center gap-1 mb-6 border-b border-border">
-          {(["runs", "briefing"] as const).map((tab) => (
+          {(["runs", "flows", "briefing"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -119,7 +175,7 @@ const ProjectDetail = () => {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "runs" ? "Test Runs" : "Briefing"}
+              {tab === "runs" ? "Test Runs" : tab === "flows" ? "Flows" : "Briefing"}
             </button>
           ))}
         </div>
@@ -150,7 +206,8 @@ const ProjectDetail = () => {
                         })}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusBadge(run.status)}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusBadge(run.status)}`}>
+                          {run.status === "running" && <Loader2 className="w-3 h-3 animate-spin" />}
                           {run.status}
                         </span>
                       </td>
@@ -171,6 +228,8 @@ const ProjectDetail = () => {
               </table>
             </div>
           )
+        ) : activeTab === "flows" ? (
+          <FlowEditor projectId={id!} />
         ) : (
           <div className="space-y-6">
             <h3 className="text-lg font-bold text-foreground font-heading">Key User Flows</h3>

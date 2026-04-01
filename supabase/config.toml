@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.marketplace-heartbeat]
 verify_jwt = false
+
+[functions.queue-test]
+verify_jwt = false
+
+[functions.webhook-results]
+verify_jwt = false
+
+[functions.get-test-jobs]
+verify_jwt = false
