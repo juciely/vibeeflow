@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import AppNavbar from "@/components/app/AppNavbar";
+import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, Loader2, CheckCircle2, XCircle, Copy, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +43,38 @@ const TestResult = () => {
     load();
   }, [user, runId]);
 
+  // Realtime for test_run updates
+  useEffect(() => {
+    if (!runId) return;
+    const channel = supabase
+      .channel(`test-run-${runId}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "UPDATE", schema: "public", table: "test_runs", filter: `id=eq.${runId}` },
+        (payload: any) => {
+          setRun(payload.new);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [runId]);
+
+  // Realtime for new test_results
+  useEffect(() => {
+    if (!runId) return;
+    const channel = supabase
+      .channel(`test-results-${runId}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "INSERT", schema: "public", table: "test_results", filter: `test_run_id=eq.${runId}` },
+        (payload: any) => {
+          setResults((prev) => [...prev, payload.new as FlowResult]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [runId]);
+
   if (authLoading || !user || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -51,8 +84,11 @@ const TestResult = () => {
   }
 
   const overallStatus = run?.status || "unknown";
+  const isRunning = overallStatus === "running" || overallStatus === "queued";
   const passed = results.filter((r) => r.status === "passed").length;
   const failed = results.filter((r) => r.status === "failed").length;
+  const totalFlows = run?.total_flows || results.length || 0;
+  const progressPercent = totalFlows > 0 ? Math.round((results.length / totalFlows) * 100) : 0;
 
   const copyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
@@ -68,23 +104,37 @@ const TestResult = () => {
           <button onClick={() => navigate(`/projects/${projectId}`)} className="p-1 rounded hover:bg-secondary transition-colors">
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
-          <div>
+          <div className="flex-1">
             <div className="flex items-center gap-3">
               <span className={`px-3 py-1 rounded-lg text-xs font-extrabold uppercase tracking-widest ${
-                overallStatus === "passed"
+                isRunning
+                  ? "bg-warning/20 text-warning border border-warning/30"
+                  : overallStatus === "passed"
                   ? "bg-success/20 text-success border border-success/30"
                   : "bg-destructive/20 text-destructive border border-destructive/30"
               }`}>
+                {isRunning && <Loader2 className="w-3 h-3 animate-spin inline mr-1" />}
                 {overallStatus}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              {results.length} flows tested,{" "}
+              {results.length}/{totalFlows} flows tested,{" "}
               <span className="text-success font-semibold">{passed} passed</span>,{" "}
               <span className="text-destructive font-semibold">{failed} failed</span>
             </p>
           </div>
         </div>
+
+        {/* Progress bar when running */}
+        {isRunning && (
+          <div className="mb-6 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Testing in progress...</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
+        )}
 
         {/* Flow Results */}
         <div className="space-y-4">
@@ -101,6 +151,11 @@ const TestResult = () => {
                     <XCircle className="w-5 h-5 text-destructive" />
                   )}
                   <span className="font-semibold text-foreground">{result.flow_name}</span>
+                  {result.duration_ms && (
+                    <span className="text-xs text-muted-foreground">
+                      {(result.duration_ms / 1000).toFixed(1)}s
+                    </span>
+                  )}
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                   result.status === "passed"
@@ -112,7 +167,6 @@ const TestResult = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border/50">
-                {/* Screenshot placeholder */}
                 <div className="p-5">
                   <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Screenshot</p>
                   {result.screenshot_url ? (
@@ -124,7 +178,6 @@ const TestResult = () => {
                   )}
                 </div>
 
-                {/* AI Insights */}
                 <div className="p-5 space-y-4">
                   {result.ai_insight && (
                     <div>
@@ -162,9 +215,16 @@ const TestResult = () => {
             </div>
           ))}
 
-          {results.length === 0 && (
+          {results.length === 0 && !isRunning && (
             <div className="text-center py-20 text-muted-foreground text-sm">
               No flow results available for this test run.
+            </div>
+          )}
+
+          {results.length === 0 && isRunning && (
+            <div className="text-center py-20 text-muted-foreground text-sm flex flex-col items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Waiting for results from the test worker...
             </div>
           )}
         </div>
